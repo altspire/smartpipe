@@ -1,14 +1,11 @@
 package org.smartpipe.sandbox;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.smartpipe.lib.MongoDbHelper;
 import org.smartpipe.lib.WatchDir;
 
-import com.mongodb.*;
 /**
  * Hello world!
  *

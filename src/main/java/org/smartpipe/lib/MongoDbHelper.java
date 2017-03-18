@@ -65,7 +65,7 @@ public class MongoDbHelper {
 	public void extractFileToCollection(String filePath) throws IOException
 	{
 		File inputFile = new File(filePath);
-		_collectionName = "landing." + FilenameUtils.removeExtension(inputFile.getName());
+		_collectionName = "landing_" + FilenameUtils.removeExtension(inputFile.getName());
 		CSVReader reader = new CSVReader(new FileReader(inputFile), ',' , '"');
 		try 
 		{
@@ -77,8 +77,8 @@ public class MongoDbHelper {
 			     if (nextLine != null) {
 			        //Verifying the read data here
 			    	 this.insertDocument(nextLine);
-		     }
-		}
+			     }
+			}
 
 		}
 		finally
@@ -96,7 +96,7 @@ public class MongoDbHelper {
 		Set<String> colls = _mongoClient.getDB(_databaseName).getCollectionNames();
 
 		for (String s : colls) {
-			if(s.contains("landing.")){
+			if(s.contains("landing_")){
 				upsertLandingToHistory(_mongoClient.getDB(_databaseName).getCollection(s));
 			}
 		}
@@ -105,13 +105,28 @@ public class MongoDbHelper {
 	
 	private void upsertLandingToHistory(DBCollection collection)
 	{
-		DBCollection historyCollection =_mongoClient.getDB(_databaseName).getCollection("history." + collection.getName().replace("landing.", ""));	
+		DBCollection historyCollection =_mongoClient.getDB(_databaseName).getCollection("history_" + collection.getName().replace("landing_", ""));	
 		DBCursor cursor = collection.find();
 		
 		while (cursor.hasNext()) {
-			DBObject curr = cursor.next();
-			curr.removeField("_id");
-			historyCollection.update(new BasicDBObject().append("id", curr.get("id") ), curr, true, false);
+			DBObject landingDoc = cursor.next();
+			landingDoc.removeField("_id");
+
+			DBObject historyDoc = historyCollection.findOne(new BasicDBObject().append("id", landingDoc.get("id")));
+			
+			if(historyDoc != null) {
+				historyDoc.removeField("_id");
+				
+				for(String key: historyDoc.keySet()){
+					if(!key.equals("lineage_id") && !key.equals("date_created") && historyDoc.keySet().size() < landingDoc.keySet().size() && !landingDoc.get(key).equals(historyDoc.get(key))){
+						historyCollection.update(new BasicDBObject().append("id", landingDoc.get("id") ), landingDoc, true, false);
+						continue;
+					}
+				}
+			} else {
+				historyCollection.insert(landingDoc);				
+			}
+
 		}
 			
 	}
