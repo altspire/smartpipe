@@ -106,7 +106,7 @@ public class MongoDbHelper {
 	private void upsertLandingToHistory(DBCollection collection)
 	{
 		DBCollection historyCollection =_mongoClient.getDB(_databaseName).getCollection("history_" + collection.getName().replace("landing_", ""));	
-		DBCursor cursor = collection.find();
+		DBCursor cursor = collection.find(new BasicDBObject().append("lineage_id", this._lineageId.toString()));
 		
 		while (cursor.hasNext()) {
 			DBObject landingDoc = cursor.next();
@@ -118,7 +118,7 @@ public class MongoDbHelper {
 				historyDoc.removeField("_id");
 				
 				for(String key: historyDoc.keySet()){
-					if(!key.equals("lineage_id") && !key.equals("date_created") && historyDoc.keySet().size() < landingDoc.keySet().size() && !landingDoc.get(key).equals(historyDoc.get(key))){
+					if(!key.equals("lineage_id") && !key.equals("date_created") && (historyDoc.keySet().size() != landingDoc.keySet().size() || !landingDoc.get(key).equals(historyDoc.get(key)))){
 						historyCollection.update(new BasicDBObject().append("id", landingDoc.get("id") ), landingDoc, true, false);
 						continue;
 					}
