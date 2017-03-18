@@ -48,9 +48,6 @@ public class MongoDbHelper {
 	{
 		BasicDBObject newObject = new BasicDBObject();
 		
-		//Generate new unique Id
-		//newObject.append("_id", ObjectId.get());
-		
 		newObject.append("lineage_id", _lineageId.toString());
 		newObject.append("date_created", new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()));
 		
@@ -85,7 +82,7 @@ public class MongoDbHelper {
 		{
 			reader.close();
 		}
-		upsertLandingToHistory(this.getCollection());
+		doLandingToHistoryForCollection(this.getCollection());
 		
 		System.out.println(this.getCollection().count());
 		
@@ -97,13 +94,13 @@ public class MongoDbHelper {
 
 		for (String s : colls) {
 			if(s.contains("landing_")){
-				upsertLandingToHistory(_mongoClient.getDB(_databaseName).getCollection(s));
+				doLandingToHistoryForCollection(_mongoClient.getDB(_databaseName).getCollection(s));
 			}
 		}
 
 	}
 	
-	private void upsertLandingToHistory(DBCollection collection)
+	private void doLandingToHistoryForCollection(DBCollection collection)
 	{
 		DBCollection historyCollection =_mongoClient.getDB(_databaseName).getCollection("history_" + collection.getName().replace("landing_", ""));	
 		DBCursor cursor = collection.find(new BasicDBObject().append("lineage_id", this._lineageId.toString()));
@@ -119,12 +116,41 @@ public class MongoDbHelper {
 				
 				for(String key: historyDoc.keySet()){
 					if(!key.equals("lineage_id") && !key.equals("date_created") && (historyDoc.keySet().size() != landingDoc.keySet().size() || !landingDoc.get(key).equals(historyDoc.get(key)))){
-						historyCollection.update(new BasicDBObject().append("id", landingDoc.get("id") ), landingDoc, true, false);
-						continue;
+						historyCollection.insert(landingDoc);				
+						break;
 					}
 				}
 			} else {
 				historyCollection.insert(landingDoc);				
+			}
+
+		}
+		doHistoryToCurrentForCollection(historyCollection);
+			
+	}
+	
+	private void doHistoryToCurrentForCollection(DBCollection collection)
+	{
+		DBCollection currentCollection =_mongoClient.getDB(_databaseName).getCollection("current_" + collection.getName().replace("history_", ""));	
+		DBCursor cursor = collection.find(new BasicDBObject().append("lineage_id", this._lineageId.toString()));
+		
+		while (cursor.hasNext()) {
+			DBObject historyDoc = cursor.next();
+			historyDoc.removeField("_id");
+
+			DBObject currentDoc = currentCollection.findOne(new BasicDBObject().append("id", historyDoc.get("id")));
+			
+			if(currentDoc != null) {
+				currentDoc.removeField("_id");
+				
+				for(String key: currentDoc.keySet()){
+					if(!key.equals("lineage_id") && !key.equals("date_created") && (currentDoc.keySet().size() != historyDoc.keySet().size() || !currentDoc.get(key).equals(historyDoc.get(key)))){
+						currentCollection.update(new BasicDBObject().append("id", historyDoc.get("id") ), historyDoc, true, false);
+						continue;
+					}
+				}
+			} else {
+				currentCollection.insert(historyDoc);				
 			}
 
 		}
