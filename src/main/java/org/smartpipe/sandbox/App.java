@@ -36,21 +36,6 @@ public class App
         // register directory and process its events
         Path dir = Paths.get(args[dirArg]);
         new WatchDir(dir, recursive).processEvents();
-    }
-    
-    
-	public static void mongoTest() throws IOException
-    {
-			
-    		try {
-				MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://localhost:27017"));
-				MongoDbHelper dbHelper = new MongoDbHelper(mongoClient, "canon");
-				dbHelper.extractFileToCollection("C:\\dev_java\\code\\sandbox\\data\\MOCK_DATA.csv");
-			} catch (UnknownHostException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-    }
-       
+    }  
 
 }
