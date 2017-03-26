@@ -6,6 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.commons.io.FilenameUtils;
@@ -49,7 +50,7 @@ public class MongoDbHelper {
 		BasicDBObject newObject = new BasicDBObject();
 		
 		newObject.append("lineage_id", _lineageId.toString());
-		newObject.append("date_created", new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()));
+		newObject.append("date_created", System.nanoTime());
 		
 		for(int i=0;i<values.length;i++)
 		{
@@ -63,7 +64,7 @@ public class MongoDbHelper {
 	{
 		File inputFile = new File(filePath);
 		_collectionName = "landing_" + FilenameUtils.removeExtension(inputFile.getName());
-		CSVReader reader = new CSVReader(new FileReader(inputFile), ',' , '"');
+		CSVReader reader = new CSVReader(new FileReader(inputFile), '|' , '"');
 		try 
 		{
 		  //Read CSV line by line and use the string array as you want
@@ -100,16 +101,42 @@ public class MongoDbHelper {
 
 	}
 	
+	private HashSet<String> generateIDFieldsQuery(DBCollection collection)
+	{
+		HashSet<String> IDFields = new HashSet<String>();
+		for (String attributeName: _attributeNames)
+		{
+			if(attributeName.toLowerCase().endsWith("id"))
+			{
+				IDFields.add(attributeName);
+			}
+		}
+		return IDFields;
+	}
+	
 	private void doLandingToHistoryForCollection(DBCollection collection)
 	{
 		DBCollection historyCollection =_mongoClient.getDB(_databaseName).getCollection("history_" + collection.getName().replace("landing_", ""));	
 		DBCursor cursor = collection.find(new BasicDBObject().append("lineage_id", this._lineageId.toString()));
+		HashSet<String> IDFields = generateIDFieldsQuery(historyCollection);
 		
 		while (cursor.hasNext()) {
 			DBObject landingDoc = cursor.next();
 			landingDoc.removeField("_id");
+			
+			BasicDBObject IDFieldQuery = new BasicDBObject();
+			for(String IDField: IDFields)
+			{
+				IDFieldQuery.append(IDField, landingDoc.get(IDField));
+			}
 
-			DBObject historyDoc = historyCollection.findOne(new BasicDBObject().append("id", landingDoc.get("id")));
+			DBCursor historyCollectionCursor = historyCollection.find(IDFieldQuery).sort(new BasicDBObject("_id", -1));
+			DBObject historyDoc = null;
+			
+			if(historyCollectionCursor.hasNext())
+			{
+				historyDoc = historyCollectionCursor.next();
+			}
 			
 			if(historyDoc != null) {
 				historyDoc.removeField("_id");
@@ -133,19 +160,26 @@ public class MongoDbHelper {
 	{
 		DBCollection currentCollection =_mongoClient.getDB(_databaseName).getCollection("current_" + collection.getName().replace("history_", ""));	
 		DBCursor cursor = collection.find(new BasicDBObject().append("lineage_id", this._lineageId.toString()));
+		HashSet<String> IDFields = generateIDFieldsQuery(currentCollection);
 		
 		while (cursor.hasNext()) {
 			DBObject historyDoc = cursor.next();
 			historyDoc.removeField("_id");
 
-			DBObject currentDoc = currentCollection.findOne(new BasicDBObject().append("id", historyDoc.get("id")));
+			BasicDBObject IDFieldQuery = new BasicDBObject();
+			for(String IDField: IDFields)
+			{
+				IDFieldQuery.append(IDField, historyDoc.get(IDField));
+			}
+
+			DBObject currentDoc = currentCollection.findOne(IDFieldQuery);
 			
 			if(currentDoc != null) {
 				currentDoc.removeField("_id");
 				
 				for(String key: currentDoc.keySet()){
 					if(!key.equals("lineage_id") && !key.equals("date_created") && (currentDoc.keySet().size() != historyDoc.keySet().size() || !currentDoc.get(key).equals(historyDoc.get(key)))){
-						currentCollection.update(new BasicDBObject().append("id", historyDoc.get("id") ), historyDoc, true, false);
+						currentCollection.update(IDFieldQuery, historyDoc, true, false);
 						continue;
 					}
 				}

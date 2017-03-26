@@ -109,6 +109,7 @@ public class WatchDir {
                 System.out.format("%s: %s\n", _kind.name(), _child);
             }
         }
+		MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://localhost:27017"));
         for (;;) {
  
             // wait for key to be signalled
@@ -124,9 +125,7 @@ public class WatchDir {
                 System.err.println("WatchKey not recognized!!");
                 continue;
             }
-            
-			MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://localhost:27017"));
- 
+
             for (WatchEvent<?> event: key.pollEvents()) {
                 WatchEvent.Kind kind = event.kind();
  
@@ -167,6 +166,7 @@ public class WatchDir {
                 }
             }
         }
+        mongoClient.close();
     }
  
     static void usage() {
