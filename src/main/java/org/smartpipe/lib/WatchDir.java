@@ -95,7 +95,7 @@ public class WatchDir {
             Path _child;
             
             OneShotTask(MongoClient mongoClient, WatchEvent.Kind kind, Path child  ) { 
-            	_dbHelper = new MongoDbHelper(mongoClient, "canon");; 
+            	_dbHelper = new MongoDbHelper(mongoClient, "canon");
             	_kind = kind; 
             	_child = child; 
             	}
@@ -109,7 +109,7 @@ public class WatchDir {
                 System.out.format("%s: %s\n", _kind.name(), _child);
             }
         }
-		MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://localhost:27017"));
+		MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://ec2-52-14-157-242.us-east-2.compute.amazonaws.com:27017"));
         for (;;) {
  
             // wait for key to be signalled

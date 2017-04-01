@@ -4,8 +4,8 @@ import java.util.UUID;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -65,6 +65,7 @@ public class MongoDbHelper {
 		File inputFile = new File(filePath);
 		_collectionName = "landing_" + FilenameUtils.removeExtension(inputFile.getName());
 		CSVReader reader = new CSVReader(new FileReader(inputFile), '|' , '"');
+		
 		try 
 		{
 		  //Read CSV line by line and use the string array as you want
@@ -78,6 +79,34 @@ public class MongoDbHelper {
 			     }
 			}
 
+		}
+		finally
+		{
+			reader.close();
+		}
+		doLandingToHistoryForCollection(this.getCollection());
+		
+		System.out.println(this.getCollection().count());
+		
+	}
+	
+	public void extractS3FileToCollection(String fileName, InputStream fileInputStream) throws IOException
+	{
+		_collectionName = "landing_" + FilenameUtils.removeExtension(fileName);
+		CSVReader reader = new CSVReader(new InputStreamReader(fileInputStream), '|' , '"');
+		
+		try 
+		{
+		  //Read CSV line by line and use the string array as you want
+		  String[] nextLine;
+		  _attributeNames = reader.readNext();
+		
+			while ((nextLine = reader.readNext()) != null) {
+			     if (nextLine != null) {
+			        //Verifying the read data here
+			    	 this.insertDocument(nextLine);
+			     }
+			}
 		}
 		finally
 		{
