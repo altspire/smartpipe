@@ -30,9 +30,9 @@ public class Handler implements RequestHandler<S3EventNotification, Object> {
 		try {
 			mongoClient = new MongoClient(new MongoClientURI("mongodb://YOUR_EC2_INSTANCE_HOSTING_MONGO:27017"));
 		} catch (UnknownHostException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+
 		MongoDbHelper _dbHelper = new MongoDbHelper(mongoClient, "canon");
 	
 	    S3EventNotificationRecord record = input.getRecords().get(0);
@@ -47,7 +47,6 @@ public class Handler implements RequestHandler<S3EventNotification, Object> {
         try {
 			_dbHelper.extractS3FileToLanding(s3Key, objectData);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			System.out.println("extractS3FileToCollection exception");
 			e.printStackTrace();
 		}

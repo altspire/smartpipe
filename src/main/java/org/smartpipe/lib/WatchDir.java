@@ -103,7 +103,6 @@ public class WatchDir {
                 try {
 					_dbHelper.extractFileToLanding(_child.toString());
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
                 System.out.format("%s: %s\n", _kind.name(), _child);

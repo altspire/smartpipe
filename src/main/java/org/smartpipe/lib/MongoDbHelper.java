@@ -6,7 +6,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.io.FilenameUtils;
@@ -241,9 +243,58 @@ public class MongoDbHelper {
 			} else {
 				currentCollection.insert(historyDoc);				
 			}
-
 		}
+	}
+	
+	public void runAllMasterSpecValidations(DBCollection masterSpecCollection)
+	{
+		DBCursor cursor = masterSpecCollection.find(new BasicDBObject().append("FieldLookupModelKeyId", new BasicDBObject().append("$ne", "NULL")));
+		HashMap<String, DBObject> parentChildMappings = new HashMap<String, DBObject>(); 
+		
+		while (cursor.hasNext()) 
+		{
+			DBObject fkValidationRuleDoc = cursor.next();
 			
+			if(_mongoClient.getDB(_databaseName).collectionExists("current_" + fkValidationRuleDoc.get("ModelKey")))
+			{
+				parentChildMappings.put(fkValidationRuleDoc.get("ModelKey") + "" + fkValidationRuleDoc.get("FieldKey") + fkValidationRuleDoc.get("FieldLookupModel") + fkValidationRuleDoc.get("FieldLookupField"), fkValidationRuleDoc);
+			}
+		}
+		
+		for(Map.Entry<String, DBObject> entry : parentChildMappings.entrySet()) 
+		{
+			System.out.println(entry.getValue().get("ModelKey") + " " + entry.getValue().get("FieldKey") + " " + entry.getValue().get("FieldLookupModel") + " " + entry.getValue().get("FieldLookupField"));
+			
+			doValidationsForCollection(_mongoClient.getDB(_databaseName).getCollection("current_" + entry.getValue().get("ModelKey")),
+									   _mongoClient.getDB(_databaseName).getCollection("current_" + entry.getValue().get("FieldLookupModel")),
+									   entry.getValue().get("FieldKey").toString(),
+									   entry.getValue().get("FieldLookupField").toString());
+		}
+	}
+	
+	public void doValidationsForCollection(DBCollection childCollection, DBCollection parentCollection, String fieldKey, String fieldLookupField)
+	{
+		DBCursor cursor = childCollection.find();
+		
+		while (cursor.hasNext()) 
+		{
+			DBObject childDoc = cursor.next();
+			
+			if(parentCollection.findOne(new BasicDBObject().append(fieldLookupField, childDoc.get(fieldKey))) == null)
+			{
+				childCollection.update(new BasicDBObject().append("_id", childDoc.get("_id")), new BasicDBObject().append("$set", new BasicDBObject().append(fieldKey+"_fk", "0")));
+			}
+			else
+			{
+				childCollection.update(new BasicDBObject().append("_id", childDoc.get("_id")), new BasicDBObject().append("$set", new BasicDBObject().append(fieldKey+"_fk", "1")));
+			}
+		}
+	}
+	
+	@SuppressWarnings("unused")
+	private void addFieldWithValueToDoc(String DBName, String collName, String docID, String key, String value) {
+	    BasicDBObject setNewFieldQuery = new BasicDBObject().append("$set", new BasicDBObject().append(key, value));
+	    _mongoClient.getDB(DBName).getCollection(collName).update(new BasicDBObject().append("_id", docID), setNewFieldQuery);
 	}
 
 }
