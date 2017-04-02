@@ -45,7 +45,7 @@ public class Handler implements RequestHandler<S3EventNotification, Object> {
 
         System.out.println("Bucket: " + s3Bucket+" File:"+s3Key);
         try {
-			_dbHelper.extractS3FileToCollection(s3Key, objectData);
+			_dbHelper.extractS3FileToLanding(s3Key, objectData);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			System.out.println("extractS3FileToCollection exception");

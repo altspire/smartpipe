@@ -63,6 +63,33 @@ public class MongoDbHelper {
 	public void extractFileToCollection(String filePath) throws IOException
 	{
 		File inputFile = new File(filePath);
+		_collectionName = FilenameUtils.removeExtension(inputFile.getName());
+		CSVReader reader = new CSVReader(new FileReader(inputFile), ',' , '"');
+		
+		try 
+		{
+		  //Read CSV line by line and use the string array as you want
+		  String[] nextLine;
+		  _attributeNames = reader.readNext();
+		
+			while ((nextLine = reader.readNext()) != null) {
+			     if (nextLine != null) {
+			        //Verifying the read data here
+			    	 this.insertDocument(nextLine);
+			     }
+			}
+		}
+		finally
+		{
+			reader.close();
+		}
+		System.out.println(this.getCollection().count());
+		
+	}
+	
+	public void extractFileToLanding(String filePath) throws IOException
+	{
+		File inputFile = new File(filePath);
 		_collectionName = "landing_" + FilenameUtils.removeExtension(inputFile.getName());
 		CSVReader reader = new CSVReader(new FileReader(inputFile), '|' , '"');
 		
@@ -90,7 +117,7 @@ public class MongoDbHelper {
 		
 	}
 	
-	public void extractS3FileToCollection(String fileName, InputStream fileInputStream) throws IOException
+	public void extractS3FileToLanding(String fileName, InputStream fileInputStream) throws IOException
 	{
 		_collectionName = "landing_" + FilenameUtils.removeExtension(fileName);
 		CSVReader reader = new CSVReader(new InputStreamReader(fileInputStream), '|' , '"');
@@ -115,7 +142,6 @@ public class MongoDbHelper {
 		doLandingToHistoryForCollection(this.getCollection());
 		
 		System.out.println(this.getCollection().count());
-		
 	}
 	
 	public void doLandingToHistory()
