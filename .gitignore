@@ -4,6 +4,7 @@ tmp/
 *.tmp
 *.bak
 *.swp
+*.csv
 *~.nib
 local.properties
 .settings/

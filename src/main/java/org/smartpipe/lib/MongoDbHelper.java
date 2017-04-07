@@ -3,11 +3,13 @@ package org.smartpipe.lib;
 import java.util.UUID;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,6 +22,7 @@ import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.opencsv.CSVReader;
+import com.opencsv.CSVWriter;
 
 
 public class MongoDbHelper {
@@ -117,6 +120,51 @@ public class MongoDbHelper {
 		
 		System.out.println(this.getCollection().count());
 		
+	}
+	
+	public void extractCurrentCollectionsToCSV() throws IOException
+	{
+		Set<String> colls = _mongoClient.getDB(_databaseName).getCollectionNames();
+
+		for (String s : colls) {
+			if(s.startsWith("current_")){
+				extractCollectionToCSV(_mongoClient.getDB(_databaseName).getCollection(s));
+			}
+		}
+	}
+	
+	public void extractCollectionToCSV(DBCollection currentCollection) throws IOException
+	{
+		String csv = "data/" + currentCollection.getName() + ".csv";
+	    CSVWriter writer = new CSVWriter(new FileWriter(csv), '|', Character.MIN_VALUE);
+	      
+        DBCursor cursor = currentCollection.find();
+        boolean collectionFirst = true;
+        while (cursor.hasNext()) {
+
+            DBObject collectionElement = cursor.next();
+            boolean first = true;
+            Set < String > keySet = collectionElement.keySet();
+            LinkedList<String> lineToWrite = new LinkedList<String>();
+            if (collectionFirst) {
+                for (String key: keySet)
+                if (first) {
+                    lineToWrite.add(key);
+                    first = !first;
+                } else lineToWrite.add(key);
+                writer.writeNext(lineToWrite.toArray(new String[lineToWrite.size()]));
+                lineToWrite = new LinkedList<String>();
+                collectionFirst = !collectionFirst;
+            }
+            first = true;
+            for (String key: keySet)
+            if (first) {
+                lineToWrite.add(collectionElement.get(key).toString());
+                first = !first;
+            } else lineToWrite.add(collectionElement.get(key).toString());
+            writer.writeNext(lineToWrite.toArray(new String[lineToWrite.size()]));
+		}
+        writer.close();
 	}
 	
 	public void extractS3FileToLanding(String fileName, InputStream fileInputStream) throws IOException
