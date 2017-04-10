@@ -36,11 +36,11 @@ public class MongoDbHelper {
 	public MongoDbHelper(MongoClient mongoClient, String databaseName)
 	{
 		_mongoClient = mongoClient;
-		_databaseName = databaseName;
+		_databaseName = databaseName; 
 		_lineageId = UUID.randomUUID();
 	}
 	
-	public DBCollection getCollection()
+	public DBCollection getCollection() 
 	{
 		return _mongoClient.getDB(_databaseName).getCollection(_collectionName);
 	}
@@ -57,9 +57,22 @@ public class MongoDbHelper {
 		newObject.append("lineage_id", _lineageId.toString());
 		newObject.append("date_created", System.nanoTime());
 		
-		for(int i=0;i<values.length;i++)
+		try
 		{
-			newObject.append(_attributeNames[i], values[i]);
+			if(values.length > _attributeNames.length)
+			{
+				System.out.print("crap");
+			}
+			
+			for(int i=0;i<values.length;i++)
+			{
+				newObject.append(_attributeNames[i], values[i]);
+			}
+		}
+		catch(Exception e)
+		{
+			System.out.println("ArrayOutOfBoundsException for file: " + this._collectionName);
+			e.printStackTrace();
 		}
 		
 		return newObject;
@@ -96,7 +109,7 @@ public class MongoDbHelper {
 	{
 		File inputFile = new File(filePath);
 		_collectionName = "landing_" + FilenameUtils.removeExtension(inputFile.getName());
-		CSVReader reader = new CSVReader(new FileReader(inputFile), '|' , '"');
+		CSVReader reader = new CSVReader(new FileReader(inputFile), '|', Character.MIN_VALUE);
 		
 		try 
 		{
@@ -189,6 +202,8 @@ public class MongoDbHelper {
 		{
 			reader.close();
 		}
+		
+		createIndexesForCollection(this.getCollection());
 		doLandingToHistoryForCollection(this.getCollection());
 		
 		System.out.println(this.getCollection().count());
@@ -219,9 +234,22 @@ public class MongoDbHelper {
 		return IDFields;
 	}
 	
+	private void createIndexesForCollection(DBCollection collection)
+	{
+		HashSet<String> IDFields = this.generateIDFieldsQuery(collection);
+		
+		for (String IDField: IDFields)
+		{
+			collection.createIndex(new BasicDBObject(IDField, 1));
+		}
+		
+	}
+	
 	private void doLandingToHistoryForCollection(DBCollection collection)
 	{
-		DBCollection historyCollection =_mongoClient.getDB(_databaseName).getCollection("history_" + collection.getName().replace("landing_", ""));	
+		DBCollection historyCollection =_mongoClient.getDB(_databaseName).getCollection("history_" + collection.getName().replace("landing_", ""));
+		createIndexesForCollection(historyCollection);
+		
 		DBCursor cursor = collection.find(new BasicDBObject().append("lineage_id", this._lineageId.toString()));
 		HashSet<String> IDFields = generateIDFieldsQuery(historyCollection);
 		
@@ -263,7 +291,9 @@ public class MongoDbHelper {
 	
 	private void doHistoryToCurrentForCollection(DBCollection collection)
 	{
-		DBCollection currentCollection =_mongoClient.getDB(_databaseName).getCollection("current_" + collection.getName().replace("history_", ""));	
+		DBCollection currentCollection =_mongoClient.getDB(_databaseName).getCollection("current_" + collection.getName().replace("history_", ""));
+		createIndexesForCollection(currentCollection);
+		
 		DBCursor cursor = collection.find(new BasicDBObject().append("lineage_id", this._lineageId.toString()));
 		HashSet<String> IDFields = generateIDFieldsQuery(currentCollection);
 		
